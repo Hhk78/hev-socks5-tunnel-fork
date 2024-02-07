@@ -1,102 +1,18 @@
-# HevSocks5Tunnel
+Normal README için https://github.com/heiher/hev-socks5-tunnel 'e bakın.
 
-[![status](https://gitlab.com/hev/hev-socks5-tunnel/badges/master/pipeline.svg)](https://gitlab.com/hev/hev-socks5-tunnel/commits/master)
 
-A tunnel over Socks5 proxy (tun2socks) for Unix.
-
-## Features
-
-* IPv4/IPv6. (dual stack)
-* Redirect TCP connections.
-* Redirect UDP packets. (Fullcone NAT, UDP in UDP/TCP)
-* Linux/Android/FreeBSD/macOS/iOS/WSL2.
-
-## Benchmarks
-
-See [here](https://github.com/heiher/hev-socks5-tunnel/wiki/Benchmarks) for more details.
-
-### Speed
-
-![](https://github.com/heiher/hev-socks5-tunnel/wiki/res/upload-speed.png)
-![](https://github.com/heiher/hev-socks5-tunnel/wiki/res/download-speed.png)
-
-### CPU usage
-
-![](https://github.com/heiher/hev-socks5-tunnel/wiki/res/upload-cpu.png)
-![](https://github.com/heiher/hev-socks5-tunnel/wiki/res/download-cpu.png)
-
-### Memory usage
-
-![](https://github.com/heiher/hev-socks5-tunnel/wiki/res/upload-mem.png)
-![](https://github.com/heiher/hev-socks5-tunnel/wiki/res/download-mem.png)
-
-## How to Build
-
-### Unix
-
+# Conf dosyası
+Benim kullandığım;
 ```bash
-git clone --recursive https://github.com/heiher/hev-socks5-tunnel
-cd hev-socks5-tunnel
-make
-```
-
-### Android
-
-```bash
-mkdir hev-socks5-tunnel
-cd hev-socks5-tunnel
-git clone --recursive https://github.com/heiher/hev-socks5-tunnel jni
-ndk-build
-```
-
-### iOS and MacOS
-
-```bash
-git clone --recursive https://github.com/heiher/hev-socks5-tunnel
-cd hev-socks5-tunnel
-# will generate HevSocks5Tunnel.xcframework
-./build.sh
-```
-
-### Library
-
-```bash
-git clone --recursive https://github.com/heiher/hev-socks5-tunnel
-cd hev-socks5-tunnel
-
-# Static library
-make static
-
-# Shared library
-make shared
-
-# Static library for iOS
-make PP="xcrun --sdk iphoneos --toolchain iphoneos clang" \
-     CC="xcrun --sdk iphoneos --toolchain iphoneos clang" \
-     CFLAGS="-arch arm64 -mios-version-min=12.0" \
-     LFLAGS="-arch arm64 -mios-version-min=12.0 -Wl,-Bsymbolic-functions" static
-
-libtool -static -o libhev-socks5-tunnel.a \
-                   bin/libhev-socks5-tunnel.a \
-                   third-part/lwip/bin/liblwip.a \
-                   third-part/yaml/bin/libyaml.a \
-                   third-part/hev-task-system/bin/libhev-task-system.a
-```
-
-## How to Use
-
-### Config
-
-```yaml
 tunnel:
   # Interface name
   name: tun0
   # Interface MTU
-  mtu: 8500
+  mtu: 1500
   # Multi-queue
   multi-queue: false
   # IPv4 address
-  ipv4: 198.18.0.1
+  ipv4: 10.0.0.1
   # IPv6 address
   ipv6: 'fc00::1'
   # Post up script
@@ -108,9 +24,9 @@ socks5:
   # Socks5 server port
   port: 1080
   # Socks5 server address (ipv4/ipv6)
-  address: 127.0.0.1
+  address: 192.168.1.103
   # Socks5 UDP relay mode (tcp|udp)
-  udp: 'udp'
+  udp: 'tcp'
   # Socks5 handshake using pipeline mode
 # pipeline: false
   # Socks5 server username
@@ -135,98 +51,24 @@ socks5:
 #  pid-file: /run/hev-socks5-tunnel.pid
    # If present, set rlimit nofile; else use default value
 #  limit-nofile: 65535
+
 ```
 
-### Run
+# İnternet protokolü rotaları için
+```bash
+sudo ip route del default               
+sudo ip route add default dev tun0
+```
 
-#### Linux
+# V2ray, shadowsocks vs. için
+
+V2ray ve shadowsocksun bağlandığı sunucunun public ip adresini şu şekil girin;
 
 ```bash
-# Set socks5.mark = 438
-bin/hev-socks5-tunnel conf/main.yml
-
-# Bypass upstream socks5 server
-sudo ip rule add fwmark 0x438 lookup main pref 10
-sudo ip -6 rule add fwmark 0x438 lookup main pref 10
-
-# Route others
-sudo ip route add default dev tun0 table 20
-sudo ip rule add lookup 20 pref 20
-sudo ip -6 route add default dev tun0 table 20
-sudo ip -6 rule add lookup 20 pref 20
+sudo ip route add server_pulic_ip/32 via modem/router_defdault_gateway dev internet_interface
 ```
+# Örnek
 
-#### FreeBSD/macOS
-
-```zsh
-# Bypass upstream socks5 server
-# 10.0.0.1: socks5 server
-# 10.0.2.2: default gateway
-sudo route add -net 10.0.0.1/32 10.0.2.2
-
-# Route others
-sudo route change -inet default -interface utun99
-sudo route change -inet6 default -interface utun99
+```bash
+ sudo ip route add 149.91.1.15/32 via 192.168.1.1 dev enp3s0
 ```
-
-## API
-
-```c
-/**
- * hev_socks5_tunnel_main:
- * @config_path: config file path
- * @tun_fd: tunnel file descriptor
- *
- * Start and run the socks5 tunnel, this function will blocks until the
- * hev_socks5_tunnel_quit is called or an error occurs.
- *
- * Returns: returns zero on successful, otherwise returns -1.
- *
- * Since: 2.4.6
- */
-int hev_socks5_tunnel_main (const char *config_path, int tun_fd);
-
-/**
- * hev_socks5_tunnel_quit:
- *
- * Stop the socks5 tunnel.
- *
- * Since: 2.4.6
- */
-void hev_socks5_tunnel_quit (void);
-
-/**
- * hev_socks5_tunnel_stats:
- * @tx_packets (out): transmitted packets
- * @tx_bytes (out): transmitted bytes
- * @rx_packets (out): received packets
- * @rx_bytes (out): received bytes
- *
- * Retrieve tunnel interface traffic statistics.
- *
- * Since: 2.6.5
- */
-void hev_socks5_tunnel_stats (size_t *tx_packets, size_t *tx_bytes,
-                              size_t *rx_packets, size_t *rx_bytes);
-```
-
-## Use Cases
-
-### Android VPN
-
-* [SocksTun](https://github.com/heiher/sockstun)
-
-### iOS
-
-* [Tun2SocksKit](https://github.com/EbrahimTahernejad/Tun2SocksKit)
-
-## Contributors
-
-* **arror** - https://github.com/arror
-* **EbrahimTahernejad** - https://github.com/EbrahimTahernejad
-* **heiby** - https://github.com/heiby
-* **hev** - https://hev.cc
-
-## License
-
-MIT
